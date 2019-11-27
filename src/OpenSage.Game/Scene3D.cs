@@ -46,6 +46,7 @@ namespace OpenSage
         public MapFile MapFile { get; set; }
 
         public Terrain.Terrain Terrain { get; }
+        public Terrain.Navigation Navigation { get; }
         public bool ShowTerrain { get; set; } = true;
 
         public Terrain.WaterAreaCollection WaterAreas { get; }
@@ -142,6 +143,8 @@ namespace OpenSage
                     Terrain.HeightMap.Width / 2,
                     Terrain.HeightMap.Height / 2)
             };
+
+            Navigation = new Navigation(Terrain.HeightMap);
 
             contentManager.GraphicsDevice.WaitForIdle();
         }
