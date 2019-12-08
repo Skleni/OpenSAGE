@@ -535,7 +535,16 @@ namespace OpenSage
 
         internal Scene3D LoadMap(string mapPath)
         {
-            var entry = ContentManager.FileSystem.GetFile(mapPath) ?? _userDataFileSystem.GetFile(mapPath);
+            FileSystemEntry entry;
+            if (mapPath.StartsWith(_userDataFileSystem.RootDirectory))
+            {
+                mapPath = FileSystem.NormalizeFilePath(mapPath.Substring(_userDataFileSystem.RootDirectory.Length + 1));
+                entry = _userDataFileSystem.GetFile(mapPath);
+            }
+            else
+            {
+                entry = ContentManager.FileSystem.GetFile(mapPath);
+            }
 
             var mapFile = MapFile.FromFileSystemEntry(entry);
 
@@ -560,7 +569,7 @@ namespace OpenSage
             return new AptWindow(this, ContentManager, aptFile);
         }
 
-        private void StartGame(
+        public void StartGame(
             string mapFileName,
             IConnection connection,
             PlayerSetting?[] playerSettings,
@@ -693,7 +702,7 @@ namespace OpenSage
                 new EchoConnection(),
                 null,
                 0,
-                false);
+                isMultiPlayer: false);
         }
 
         public void StartMultiPlayerGame(
@@ -707,8 +716,20 @@ namespace OpenSage
                 connection,
                 playerSettings,
                 localPlayerIndex,
-                true);
+                isMultiPlayer: true);
         }
+
+        public void StartSinglePlayerGame(
+            string mapFileName)
+        {
+            StartGame(
+                mapFileName,
+                new EchoConnection(),
+                null,
+                0,
+                isMultiPlayer: false);
+        }
+
 
         public void EndGame()
         {
