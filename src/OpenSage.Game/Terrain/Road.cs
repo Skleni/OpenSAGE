@@ -28,10 +28,14 @@ namespace OpenSage.Terrain
         internal Road(
             AssetLoadContext loadContext,
             HeightMap heightMap,
-            RoadTemplate template,
-            in Vector3 startPosition,
-            in Vector3 endPosition)
+            RoadNetworkEdge edge)
         {
+            var startPosition = edge.Start.TopologyNode.Position;
+            var endPosition = edge.End.TopologyNode.Position;
+
+            startPosition.Z += heightMap.GetHeight(startPosition.X, startPosition.Y);
+            endPosition.Z += heightMap.GetHeight(endPosition.X, endPosition.Y);
+
             const float heightBias = 1f;
             const float createNewVerticesHeightDeltaThreshold = 0.002f;
 
@@ -40,7 +44,7 @@ namespace OpenSage.Terrain
             var centerToEdgeDirection = Vector3.Cross(Vector3.UnitZ, direction);
             var up = Vector3.Cross(direction, centerToEdgeDirection);
 
-            var halfWidth = template.RoadWidth / 2;
+            var halfWidth = edge.TopologyEdge.Template.RoadWidth / 2;
 
             var textureAtlasSplit = 1 / 3f;
 
@@ -54,7 +58,7 @@ namespace OpenSage.Terrain
 
             void AddVertexPair(in Vector3 position, float distanceAlongRoad)
             {
-                var u = distanceAlongRoad / 50;
+                var u = distanceAlongRoad / 140;
 
                 var p0 = position - centerToEdgeDirection * halfWidth;
                 p0.Z += heightBias;
@@ -77,7 +81,52 @@ namespace OpenSage.Terrain
                 });
             }
 
-            AddVertexPair(startPosition, 0);
+            void AddAngledConnectionVertexPair(in Vector3 position, RoadNetworkEdge connectedEdge, float distanceAlongRoad)
+            {
+                var connectedEdgeDirection = Vector3.Normalize(connectedEdge.End.TopologyNode.Position - connectedEdge.Start.TopologyNode.Position);
+
+                var connectedEdgeCenterToEdgeDirection = Vector3.Cross(Vector3.UnitZ, connectedEdgeDirection);
+
+                var toCorner = (centerToEdgeDirection + connectedEdgeCenterToEdgeDirection) / 2;
+                var toCornerLength = halfWidth / Vector3.Dot(centerToEdgeDirection, toCorner);
+
+                var p0 = position - toCorner * toCornerLength;
+                p0.Z += heightBias;
+
+                var uOffset = (p0 - (position - centerToEdgeDirection * halfWidth)).Length();
+                var u0 = (distanceAlongRoad + uOffset) / 140;
+
+                vertices.Add(new RoadShaderResources.RoadVertex
+                {
+                    Position = p0,
+                    Normal = up,
+                    UV = new Vector2(u0, 0)
+                });
+
+                var p1 = position + toCorner * toCornerLength;
+                p1.Z += heightBias;
+
+                var u1 = (distanceAlongRoad - uOffset) / 140;
+
+                vertices.Add(new RoadShaderResources.RoadVertex
+                {
+                    Position = p1,
+                    Normal = up,
+                    UV = new Vector2(u1, textureAtlasSplit)
+                });
+            }
+
+            switch (edge.Start.NodeType)
+            {
+                case RoadNodeType.TwoWay:
+                    var connectedEdge = edge.Start.Edges[0] == edge ? edge.Start.Edges[1] : edge.Start.Edges[0];
+                    AddAngledConnectionVertexPair(startPosition, connectedEdge, 0);
+                    break;
+
+                default:
+                    AddVertexPair(startPosition, 0);
+                    break;
+            }            
 
             var previousPoint = startPosition;
             var previousPointDistance = 0;
@@ -96,8 +145,20 @@ namespace OpenSage.Terrain
                 }
             }
 
-            // Add last chunk.
-            AddVertexPair(endPosition, distance);
+            switch (edge.End.NodeType)
+            {
+                case RoadNodeType.TwoWay:
+                    var connectedEdge = edge.End.Edges[0] == edge ? edge.End.Edges[1] : edge.End.Edges[0];
+
+                    AddAngledConnectionVertexPair(endPosition, connectedEdge, distance);
+
+                    break;
+
+                default:
+                    AddVertexPair(endPosition, distance);
+                    break;
+
+            }
 
             _boundingBox = BoundingBox.CreateFromPoints(vertices.Select(x => x.Position));
 
@@ -128,7 +189,7 @@ namespace OpenSage.Terrain
             _pipeline = loadContext.ShaderResources.Road.Pipeline;
 
             // TODO: Cache these resource sets in some sort of scoped data context.
-            _resourceSet = AddDisposable(loadContext.ShaderResources.Road.CreateMaterialResourceSet(template.Texture.Value));
+            _resourceSet = AddDisposable(loadContext.ShaderResources.Road.CreateMaterialResourceSet(edge.TopologyEdge.Template.Texture.Value));
 
             _beforeRender = (cl, context) =>
             {

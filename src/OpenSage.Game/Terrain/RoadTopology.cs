@@ -125,10 +125,10 @@ namespace OpenSage.Terrain
 
     internal enum RoadNodeType
     {
-        Endpoint,
-        TwoWay,
-        ThreeWay,
-        FourWay
+        Endpoint = 1,
+        TwoWay = 2,
+        ThreeWay = 3,
+        FourWay = 4
     }
 
     internal sealed class RoadNetwork
@@ -175,16 +175,11 @@ namespace OpenSage.Terrain
         public RoadTopologyNode TopologyNode { get; }
         public List<RoadNetworkEdge> Edges { get; } = new List<RoadNetworkEdge>();
 
-        public RoadNodeType NodeType { get; private set; }
+        public RoadNodeType NodeType => (RoadNodeType)this.Edges.Count;
 
         public RoadNetworkNode(RoadTopologyNode topologyNode)
         {
             TopologyNode = topologyNode;
-        }
-
-        public void ClassifyType()
-        {
-            // TODO
         }
     }
 
