@@ -11,7 +11,8 @@ namespace OpenSage.Scripting.Conditions
             { ScriptConditionType.Flag, MiscConditions.Flag },
             { ScriptConditionType.True, MiscConditions.True },
             { ScriptConditionType.TimerExpired, CounterAndTimerConditions.TimerExpired },
-            { ScriptConditionType.Counter, CounterAndTimerConditions.Counter }
+            { ScriptConditionType.Counter, CounterAndTimerConditions.Counter },
+            { ScriptConditionType.NamedInsideArea, UnitConditions.NamedInsideArea }
         };
 
         public static ScriptingCondition Get(ScriptCondition condition)
