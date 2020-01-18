@@ -7,7 +7,7 @@ namespace OpenSage.Mathematics
     {
         public readonly Vector3 Position;
         public readonly Vector3 Direction;
-
+        
         public Ray(in Vector3 position, in Vector3 direction)
         {
             Position = position;
@@ -69,7 +69,7 @@ namespace OpenSage.Mathematics
             var i = a - h * Direction;
 
             // Intersection point. Could be useful?
-            // var intersection = Position + i;
+            // var intersection = sphere.Center + i;
 
             t = i.Length();
             return true;

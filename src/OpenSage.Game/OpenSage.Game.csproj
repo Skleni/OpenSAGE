@@ -41,6 +41,8 @@
     <UpToDateCheckInput Include="@(ShaderFiles)" />
     
     <ShaderHeaderFiles Include="Assets\Shaders\*.h" />
+    
+    <Compile Remove="Scripting\TriggerAreaCollection.cs" />
     <UpToDateCheckInput Include="@(ShaderHeaderFiles)" />
   </ItemGroup>
 
