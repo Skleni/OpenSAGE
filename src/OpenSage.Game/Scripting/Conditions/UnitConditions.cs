@@ -6,31 +6,31 @@ using OpenSage.Mathematics;
 
 namespace OpenSage.Scripting.Conditions
 {
-    private class RayDirection
-    {
-        Ray
-    }
-
     public static class UnitConditions
     {
         public static bool NamedInsideArea(ScriptCondition condition, ScriptExecutionContext context)
         {
             var unitName = condition.Arguments[0].StringValue;
             var areaName = condition.Arguments[1].StringValue;
+
             if (!context.Scene.GameObjects.TryGetObjectByName(unitName, out var unit))
             {
                 ScriptingSystem.Logger.Warn($"Unit \"{unitName}\" does not exist.");
                 return false;
             }
-            var unitPosition = unit.Transform.Translation;
 
-
-            if (!context.Scripting.Flags.TryGetValue(flagName, out var flagValue))
+            if (unit.Destroyed)
             {
                 return false;
             }
 
-            return flagValue == comparedFlagValue;
+            if (!context.Scene.TriggerAreas.TryGetByName(areaName, out var area))
+            {
+                ScriptingSystem.Logger.Warn($"Trigger area \"{areaName}\" does not exist.");
+                return false;
+            }
+
+            return area.Contains(unit.Transform.Translation.Vector2XY());
         }
     }
 }
