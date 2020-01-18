@@ -1,7 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
-using OpenSage.Data.Map;
+﻿using OpenSage.Data.Map;
 using OpenSage.Mathematics;
 
 namespace OpenSage.Scripting.Conditions

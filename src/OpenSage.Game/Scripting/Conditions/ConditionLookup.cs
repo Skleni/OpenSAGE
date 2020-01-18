@@ -12,7 +12,10 @@ namespace OpenSage.Scripting.Conditions
             { ScriptConditionType.True, MiscConditions.True },
             { ScriptConditionType.TimerExpired, CounterAndTimerConditions.TimerExpired },
             { ScriptConditionType.Counter, CounterAndTimerConditions.Counter },
-            { ScriptConditionType.NamedInsideArea, UnitConditions.NamedInsideArea }
+            { ScriptConditionType.NamedInsideArea, UnitConditions.NamedInsideArea },
+            { ScriptConditionType.NamedOutsideArea, ConditionModifiers.Not(UnitConditions.NamedInsideArea) },
+            { ScriptConditionType.NamedEnteredArea, ConditionModifiers.ValueChangedTo(true, UnitConditions.NamedInsideArea, false) },
+            { ScriptConditionType.NamedExitedArea, ConditionModifiers.ValueChangedTo(false, UnitConditions.NamedInsideArea, false) }
         };
 
         public static ScriptingCondition Get(ScriptCondition condition)

@@ -26,6 +26,9 @@ namespace OpenSage.Scripting.Actions
             { ScriptActionType.DisableScript, ScriptActions.DisableScript },
             { ScriptActionType.CallSubroutine, ScriptActions.CallSubroutine },
 
+            // Debug
+            { ScriptActionType.DebugString, DebugActions.DebugString },
+
             // Camera
             { ScriptActionType.MoveCameraTo, CameraActions.MoveCameraTo },
             { ScriptActionType.SetupCamera, CameraActions.SetupCamera },
