@@ -68,6 +68,7 @@ namespace OpenSage
         public bool ShowObjects { get; set; } = true;
         public CameraCollection Cameras { get; set; }
         public WaypointCollection Waypoints { get; set; }
+        public TriggerAreaCollection TriggerAreas { get; set; }
 
         public WorldLighting Lighting { get; }
 
@@ -131,6 +132,7 @@ namespace OpenSage
                 MapFile.NamedCameras,
                 _teams,
                 out var waypoints,
+                out var triggerAreas,
                 out var gameObjects,
                 out var roads,
                 out var bridges,
@@ -140,6 +142,7 @@ namespace OpenSage
             Bridges = bridges;
             GameObjects = gameObjects;
             Waypoints = waypoints;
+            TriggerAreas = triggerAreas;
             Cameras = cameras;
             Audio = game.Audio;
 
@@ -167,6 +170,7 @@ namespace OpenSage
             NamedCameras namedCameras,
             List<Team> teams,
             out WaypointCollection waypointCollection,
+            out TriggerAreaCollection triggerAreas,
             out GameObjectCollection gameObjects,
             out RoadCollection roads,
             out Bridge[] bridges,
@@ -262,6 +266,12 @@ namespace OpenSage
             cameras = new CameraCollection(namedCameras?.Cameras);
             roads = AddDisposable(new RoadCollection(roadTopology, loadContext, heightMap));
             waypointCollection = new WaypointCollection(waypoints, MapFile.WaypointsList.WaypointPaths);
+
+            if (MapFile.PolygonTriggers != null)
+                triggerAreas = new TriggerAreaCollection(MapFile.PolygonTriggers.Triggers);
+            else
+                triggerAreas = new TriggerAreaCollection(MapFile.TriggerAreas.Areas);
+
             bridges = bridgesList.ToArray();
         }
 
@@ -289,6 +299,7 @@ namespace OpenSage
             Bridges = Array.Empty<Bridge>();
             GameObjects = gameObjects;
             Waypoints = new WaypointCollection();
+            TriggerAreas = new TriggerAreaCollection();
             Cameras = new CameraCollection();
 
             CameraController = cameraController;
