@@ -65,14 +65,54 @@ namespace OpenSage.Tests.Scripting
             Assert.Equal(expectedResult, TriggerAreaRayShooter.Analyze(new Vector2(x, y), ray, polygon));
         }
 
+        [Theory]
+        [InlineData(0.5f, 2, TriggerAreaRayShooter.PointPosition.Outside)]
+        [InlineData(1.5f, 2, TriggerAreaRayShooter.PointPosition.Inside)]
+        [InlineData(2.5f, 2, TriggerAreaRayShooter.PointPosition.Inside)]
+        [InlineData(3.5f, 2, TriggerAreaRayShooter.PointPosition.Inside)]
+        [InlineData(4.5f, 2, TriggerAreaRayShooter.PointPosition.Outside)]
+        public void HitEdge(float x, float y, TriggerAreaRayShooter.PointPosition expectedResult)
+        {
+            //  _   _
+            // | |_| |
+            // |_____|
+            var polygon = BuildPolygon((2, 2), (2, 4), (1, 3), (1, 1), (4, 1), (4, 3), (3, 3), (3,2));
+            var ray = Vector2.UnitX;
+            Assert.Equal(expectedResult, TriggerAreaRayShooter.Analyze(new Vector2(x, y), ray, polygon));
+        }
+        [Theory]
+        [InlineData(0, 1, TriggerAreaRayShooter.PointPosition.Inside)]
+        [InlineData(0, -1, TriggerAreaRayShooter.PointPosition.Inside)]
+        [InlineData(-2, 1, TriggerAreaRayShooter.PointPosition.Outside)]
+        [InlineData(-2, -1, TriggerAreaRayShooter.PointPosition.Outside)]
+        public void NonSimplePolygon(float x, float y, TriggerAreaRayShooter.PointPosition expectedResult)
+        {
+            //  ____
+            //  \  /
+            //   \/
+            //   /\
+            //  /__\
+            var polygon = BuildPolygon((2,2),(-2,2),(2,-2),(-2,-2));
+            var ray = Vector2.UnitX;
+            Assert.Equal(expectedResult, TriggerAreaRayShooter.Analyze(new Vector2(x, y), ray, polygon));
+        }
+
+        [Theory]
+        [InlineData(-1, 0, TriggerAreaRayShooter.PointPosition.Outside)]
+        [InlineData(1, 0, TriggerAreaRayShooter.PointPosition.Outside)]
+        [InlineData(4, 0, TriggerAreaRayShooter.PointPosition.Outside)]
+        public void DegeneratePolygon(float x, float y, TriggerAreaRayShooter.PointPosition expectedResult)
+        {
+            //  _____
+            //
+            var polygon = BuildPolygon((1, 0), (2, 0), (3, 0), (0, 0));
+            var ray = Vector2.UnitX;
+            Assert.Equal(expectedResult, TriggerAreaRayShooter.Analyze(new Vector2(x, y), ray, polygon));
+        }
+
         private IReadOnlyList<Vector2> BuildPolygon(params (float x, float y)[] coordinates)
         {
             return coordinates.Select(c => new Vector2(c.x, c.y)).ToArray();
-        }
-
-        void Check(IReadOnlyList<Vector2> polygon, Vector2 point, Vector2 ray, TriggerAreaRayShooter.PointPosition expectedResult)
-        {
-            Assert.Equal(expectedResult, TriggerAreaRayShooter.Analyze(point, ray, polygon));
         }
     }
 }
