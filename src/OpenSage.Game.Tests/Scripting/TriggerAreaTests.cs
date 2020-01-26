@@ -59,7 +59,11 @@ namespace OpenSage.Tests.Scripting
         [InlineData( 1, 0, true)]
         [InlineData( 2, 0, false)] //on polygon
         [InlineData( 3, 0, false)]
-        public void HitVertex(float x, float y, bool expectedResult)
+        [InlineData( 1, -1, false)] //on polygon
+        [InlineData( 1, 1, false)] //on polygon
+        [InlineData( -1, 1, true)] //on polygon
+        [InlineData( -1, -1, true)] //on polygon
+        public void Rhomboid(float x, float y, bool expectedResult)
         {
             //  /\
             // /  \
