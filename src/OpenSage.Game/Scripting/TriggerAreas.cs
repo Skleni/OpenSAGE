@@ -95,9 +95,6 @@ namespace OpenSage.Scripting
 
     public sealed class TriggerAreaRayShooter
     {
-        private static float EpsilonWorldCoords = 0.1f;
-        private static float EpsilonUnitDirections = 0.01f;
-
         public static bool IsInside(Vector2 P, IReadOnlyList<Vector2> area)
         {
             // To find out if position P is contained, start a ray there to a given direction
