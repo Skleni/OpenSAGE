@@ -89,26 +89,16 @@ namespace OpenSage.Scripting
             {
                 return false;
             }
-            var result = TriggerAreaRayShooter.Analyze(position, Vector2.UnitX, Points);
-            if (result == TriggerAreaRayShooter.PointPosition.Unknown)
-            {
-                Debug.Assert(false, "ray shooting was unsuccessful");
-            }
-            return result == TriggerAreaRayShooter.PointPosition.Inside;
+            return TriggerAreaRayShooter.IsInside(position, Points);
         }
     }
 
     public sealed class TriggerAreaRayShooter
     {
-        private static float Epsilon = 0.1f;
-        public enum PointPosition
-        {
-            Inside,
-            Outside,
-            Unknown
-        }
+        private static float EpsilonWorldCoords = 0.1f;
+        private static float EpsilonUnitDirections = 0.01f;
 
-        public static PointPosition Analyze(Vector2 unitPosition, Vector2 rayDirection, IReadOnlyList<Vector2> area)
+        public static bool IsInside(Vector2 testedPosition, IReadOnlyList<Vector2> area)
         {
             // To find out if position P is contained, start a ray there to a given direction
             // and count number of intersections with the boundary polygon.
@@ -131,7 +121,7 @@ namespace OpenSage.Scripting
 
             if (area.Count < 3)
             {
-                return PointPosition.Outside;
+                return false;
             }
             // For each point of polygon, find out where it lies relative to the Ray
             // split the plane in 4 quadrants: left/right of ray and before/behind ray start
@@ -142,22 +132,22 @@ namespace OpenSage.Scripting
             //     A
             
             var prevPoint = area.Last();
-            var prev = GetRelativePointPosition(prevPoint, unitPosition, rayDirection);
+            var prev = GetRelativePointPosition(prevPoint, testedPosition);
 
             // previous point outside ray
             var prevOffRayPoint = prevPoint;
             var prevOffRay = prev;
-            if (prev.Orthogonal == Side.Unknown)
+            if (prev.Y == Side.Unknown)
             {
                 prevOffRayPoint = area.LastOrDefault(point =>
                 {
-                    prevOffRay = GetRelativePointPosition(point, unitPosition, rayDirection);
-                    return prevOffRay.Orthogonal != Side.Unknown;
+                    prevOffRay = GetRelativePointPosition(point, testedPosition);
+                    return prevOffRay.Y != Side.Unknown;
                 });
-                if (prevOffRay.Orthogonal == Side.Unknown)
+                if (prevOffRay.Y == Side.Unknown)
                 {
                     //all points lie more or less on the ray -> but then, the area is pretty small anyways
-                    return PointPosition.Outside;
+                    return false;
                 }
             }
 
@@ -167,23 +157,23 @@ namespace OpenSage.Scripting
             int counter = 0;
             foreach (var point in area)
             {
-                next = GetRelativePointPosition(point, unitPosition, rayDirection);
-                if (next.Orthogonal != Side.Unknown)
+                next = GetRelativePointPosition(point, testedPosition);
+                if (next.Y != Side.Unknown)
                 {
-                    if (next.Orthogonal != prevOffRay.Orthogonal)
+                    if (next.Y != prevOffRay.Y)
                     {
-                        if (next.InDirection == Side.Unknown && prev.InDirection == Side.Unknown)
+                        if (next.X == Side.Unknown && prev.X == Side.Unknown)
                         {
                             //the tested point lies on this polygon edge more or less
-                            return PointPosition.Inside;
+                            return true;
                         }
-                        if (next.InDirection == Side.B && prev.InDirection == Side.B)
+                        if (next.X == Side.B && prev.X == Side.B)
                         {
                             ++counter;
                         }
-                        else if (next.InDirection == Side.B || prev.InDirection == Side.B)
+                        else if (next.X == Side.B || prev.X == Side.B)
                         {
-                            if (next.InDirection == Side.Unknown || prev.InDirection == Side.Unknown)
+                            if (next.X == Side.Unknown || prev.X == Side.Unknown)
                             {
                                 ++counter;
                             }
@@ -191,7 +181,8 @@ namespace OpenSage.Scripting
                             {
                                 // in this case, can't decide by the quadrants alone
                                 // in both cases below, one polygon point lies in top-right
-                                // and one in bottom-left quadrant: 
+                                // and one in bottom-left quadrant:
+                                // (so P lies in the axis-aligned bounding box of the edge)
                                 //            _______                   _______
                                 //           /                         /
                                 //        P-/-----------> ray         /
@@ -200,14 +191,17 @@ namespace OpenSage.Scripting
                                 //  _____/                    _____/
 
                                 var edgeDir = Vector2.Normalize(point - prevPoint);
-                                var toRayStart = (unitPosition - point);
-                                var sinPoint = Vector2Utility.Cross(edgeDir, toRayStart);
-                                var sinRay = Vector2Utility.Cross(rayDirection, edgeDir);
-                                if (sinRay > 0 && sinPoint > -Epsilon)
+                                var toRayStart = (testedPosition - point);
+                                var sinEdgeRayDir = Vector2Utility.Cross(edgeDir, Vector2.UnitX);
+                                var sinEdgePoint = Vector2Utility.Cross(edgeDir, toRayStart);
+
+                                // if two of these directions are parallel, the test point is very close to the edge
+                                if ((Math.Abs(sinEdgeRayDir) < EpsilonUnitDirections) || (Math.Abs(sinEdgePoint) < EpsilonWorldCoords))
                                 {
-                                    ++counter;
-                                }
-                                else if (sinRay < 0 && sinPoint < Epsilon)
+                                    return true;
+                                }                                
+                                //intersection iff edge direction lies between ray- and toRayStart direction
+                                if (sinEdgeRayDir > 0 != sinEdgePoint > 0)
                                 {
                                     ++counter;
                                 }
@@ -220,7 +214,7 @@ namespace OpenSage.Scripting
                 prev = next;
                 prevPoint = point;
             }
-            return (counter % 2 != 0) ? PointPosition.Inside : PointPosition.Outside;
+            return (counter % 2 != 0) ? true : false;
         }
 
         private enum Side
@@ -231,23 +225,22 @@ namespace OpenSage.Scripting
         }
         private class RelPos
         {
-            public RelPos(Side inDir, Side orth)
+            public RelPos(Side x, Side y)
             {
-                InDirection = inDir;
-                Orthogonal = orth;
+                X = x;
+                Y = y;
             }
-            public Side InDirection { get; set; }
-            public Side Orthogonal { get; set; }
+            public Side X { get; set; }
+            public Side Y { get; set; }
         }
 
-        private static RelPos GetRelativePointPosition(in Vector2 polygonPoint, in Vector2 unitPos, in Vector2 rayDirection)
+        private static RelPos GetRelativePointPosition(in Vector2 point, in Vector2 rayStart)
         {
-            var toPoint = (polygonPoint - unitPos);
-            var cosTop = Vector2.Dot(toPoint, rayDirection);
-            var face = cosTop > Epsilon ? Side.B : (cosTop < -Epsilon ? Side.A : Side.Unknown);
-            var sinTop = Vector2Utility.Cross(toPoint, rayDirection);
-            var side = sinTop > Epsilon ? Side.B : (sinTop < -Epsilon ? Side.A : Side.Unknown);
-            return new RelPos(face, side);
+            var xOffset = point.X - rayStart.X;
+            var x = xOffset > EpsilonWorldCoords ? Side.B : (xOffset < -EpsilonWorldCoords ? Side.A : Side.Unknown);
+            var yOffset = point.Y - rayStart.Y;
+            var y = yOffset > EpsilonWorldCoords ? Side.B : (yOffset < -EpsilonWorldCoords ? Side.A : Side.Unknown);
+            return new RelPos(x, y);
         }
     }
 }
