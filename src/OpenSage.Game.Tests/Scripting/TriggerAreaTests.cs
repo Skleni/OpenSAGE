@@ -18,6 +18,10 @@ namespace OpenSage.Tests.Scripting
         [InlineData (4.5f, 2.5f, false)]
         [InlineData (2.5f, 1.5f, true)]
         [InlineData (2.5f, 0.5f, false)]
+        [InlineData (2.5f, 1, true)] //on polygon
+        [InlineData (2.5f, 2, false)] //on polygon
+        [InlineData (1, 2, true)] //on polygon
+        [InlineData (4, 2, false)] //on polygon
         public void OrthogonalPolygon(float x, float y, bool expectedResult)
         {
             // ___   ___
@@ -32,9 +36,10 @@ namespace OpenSage.Tests.Scripting
         [InlineData(0, 3.5f, false)]
         [InlineData(1, 3.5f, false)]
         [InlineData(2, 3.5f, false)]
+        [InlineData(3.5, 3.5f, true)] //on polygon
         [InlineData(4, 3.5f, true)]
         [InlineData(5, 3.5f, true)]
-        [InlineData(6, 3.5f, true)]
+        [InlineData(6, 3.5f, false)] //on polygon
         [InlineData(7, 3.5f, false)]
         public void NearDiagonalEdge(float x, float y, bool expectedResult)
         {
@@ -49,8 +54,10 @@ namespace OpenSage.Tests.Scripting
         [Theory]
         [InlineData(-3, 0, false)]
         [InlineData(-1, 0, true)]
+        [InlineData(-2, 0, true)] //on polygon
         [InlineData( 0, 0, true)]
         [InlineData( 1, 0, true)]
+        [InlineData( 2, 0, false)] //on polygon
         [InlineData( 3, 0, false)]
         public void HitVertex(float x, float y, bool expectedResult)
         {
@@ -65,7 +72,7 @@ namespace OpenSage.Tests.Scripting
         [Theory]
         [InlineData(0.5f, 2, false)]
         [InlineData(1.5f, 2, true)]
-        [InlineData(2.5f, 2, true)]
+        [InlineData(2.5f, 2, false)] //on polygon
         [InlineData(3.5f, 2, true)]
         [InlineData(4.5f, 2, false)]
         public void HitEdge(float x, float y, bool expectedResult)

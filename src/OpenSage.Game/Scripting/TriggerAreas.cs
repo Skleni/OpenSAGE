@@ -98,7 +98,7 @@ namespace OpenSage.Scripting
         private static float EpsilonWorldCoords = 0.1f;
         private static float EpsilonUnitDirections = 0.01f;
 
-        public static bool IsInside(Vector2 testedPosition, IReadOnlyList<Vector2> area)
+        public static bool IsInside(Vector2 P, IReadOnlyList<Vector2> area)
         {
             // To find out if position P is contained, start a ray there to a given direction
             // and count number of intersections with the boundary polygon.
@@ -111,8 +111,9 @@ namespace OpenSage.Scripting
             //
             // BUT: in case a polygon point lies too close to the ray, we get problems
             //      do incoming edges intersect the ray? both/none (as in V), or just one of them (as in +)?
-            //      -> result gets completely unreliable, even though the point is clearly inside the polygon
-            //      -> compare if previous and next point lie above or below the ray
+            //      -> result gets unreliable, even though the point is clearly inside the polygon
+            //      -> convention: exactly same y belongs to area below the ray
+            //      -> careful when doing this with floats..
             //      _____   ___
             //     /     \ /   \
             //     |  P---V-----+-----> ray
@@ -132,24 +133,7 @@ namespace OpenSage.Scripting
             //     A
             
             var prevPoint = area.Last();
-            var prev = GetRelativePointPosition(prevPoint, testedPosition);
-
-            // previous point outside ray
-            var prevOffRayPoint = prevPoint;
-            var prevOffRay = prev;
-            if (prev.Y == Side.Unknown)
-            {
-                prevOffRayPoint = area.LastOrDefault(point =>
-                {
-                    prevOffRay = GetRelativePointPosition(point, testedPosition);
-                    return prevOffRay.Y != Side.Unknown;
-                });
-                if (prevOffRay.Y == Side.Unknown)
-                {
-                    //all points lie more or less on the ray -> but then, the area is pretty small anyways
-                    return false;
-                }
-            }
+            var prev = GetRelativePointPosition(prevPoint, P);
 
             // now go through all points. Skip those on the ray,
             // keep track of the last handled point off the ray (only use its Orthogonal component, though)
@@ -157,59 +141,36 @@ namespace OpenSage.Scripting
             int counter = 0;
             foreach (var point in area)
             {
-                next = GetRelativePointPosition(point, testedPosition);
-                if (next.Y != Side.Unknown)
+                next = GetRelativePointPosition(point, P);
+                if (next.SideY != prev.SideY)
                 {
-                    if (next.Y != prevOffRay.Y)
+                    if (next.SideX == Side.B && prev.SideX == Side.B)
                     {
-                        if (next.X == Side.Unknown && prev.X == Side.Unknown)
-                        {
-                            //the tested point lies on this polygon edge more or less
-                            return true;
-                        }
-                        if (next.X == Side.B && prev.X == Side.B)
+                        // intersect x axis on right side of the ray start
+                        ++counter;
+                    }
+                    else if (next.SideX == Side.B || prev.SideX == Side.B)
+                    {
+                        // in this case, can't decide by the quadrants alone
+                        // in both cases below, one polygon point lies in top-right
+                        // and one in bottom-left quadrant:
+                        // (so P lies in the axis-aligned bounding box of the edge)
+                        //            _______                   _______
+                        //           /                         /
+                        //        P-/-----------> ray         /
+                        //         /                         / 
+                        //        /                         / P------------> ray
+                        //  _____/                    _____/
+
+                        var edgeX = point.X - prevPoint.X;
+                        var edgeY = point.Y - prevPoint.Y;
+                        var offsetY = P.Y - prevPoint.Y;
+                        var intersectionX = prevPoint.X + edgeX * (offsetY / edgeY);
+                        if (intersectionX > P.X)
                         {
                             ++counter;
                         }
-                        else if (next.X == Side.B || prev.X == Side.B)
-                        {
-                            if (next.X == Side.Unknown || prev.X == Side.Unknown)
-                            {
-                                ++counter;
-                            }
-                            else
-                            {
-                                // in this case, can't decide by the quadrants alone
-                                // in both cases below, one polygon point lies in top-right
-                                // and one in bottom-left quadrant:
-                                // (so P lies in the axis-aligned bounding box of the edge)
-                                //            _______                   _______
-                                //           /                         /
-                                //        P-/-----------> ray         /
-                                //         /                         / 
-                                //        /                         / P------------> ray
-                                //  _____/                    _____/
-
-                                var edgeDir = Vector2.Normalize(point - prevPoint);
-                                var toRayStart = (testedPosition - point);
-                                var sinEdgeRayDir = Vector2Utility.Cross(edgeDir, Vector2.UnitX);
-                                var sinEdgePoint = Vector2Utility.Cross(edgeDir, toRayStart);
-
-                                // if two of these directions are parallel, the test point is very close to the edge
-                                if ((Math.Abs(sinEdgeRayDir) < EpsilonUnitDirections) || (Math.Abs(sinEdgePoint) < EpsilonWorldCoords))
-                                {
-                                    return true;
-                                }                                
-                                //intersection iff edge direction lies between ray- and toRayStart direction
-                                if (sinEdgeRayDir > 0 != sinEdgePoint > 0)
-                                {
-                                    ++counter;
-                                }
-                            }
-                        }
                     }
-                    prevOffRay = next;
-                    prevOffRayPoint = point;
                 }
                 prev = next;
                 prevPoint = point;
@@ -220,26 +181,23 @@ namespace OpenSage.Scripting
         private enum Side
         {
             A,
-            B,
-            Unknown
+            B
         }
         private class RelPos
         {
             public RelPos(Side x, Side y)
             {
-                X = x;
-                Y = y;
+                SideX = x;
+                SideY = y;
             }
-            public Side X { get; set; }
-            public Side Y { get; set; }
+            public Side SideX { get; set; }
+            public Side SideY { get; set; }
         }
 
         private static RelPos GetRelativePointPosition(in Vector2 point, in Vector2 rayStart)
         {
-            var xOffset = point.X - rayStart.X;
-            var x = xOffset > EpsilonWorldCoords ? Side.B : (xOffset < -EpsilonWorldCoords ? Side.A : Side.Unknown);
-            var yOffset = point.Y - rayStart.Y;
-            var y = yOffset > EpsilonWorldCoords ? Side.B : (yOffset < -EpsilonWorldCoords ? Side.A : Side.Unknown);
+            var x = point.X > rayStart.X ? Side.B : Side.A;
+            var y = point.Y > rayStart.Y ? Side.B : Side.A;
             return new RelPos(x, y);
         }
     }
